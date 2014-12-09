@@ -5,9 +5,9 @@
   "authors": [
     "david pichsenmeister <bruce@wayne-industries.com>"
   ],
-  "description": "The warp-engine client library",
+  "description": "warp-engine JavaScript SDK",
   "main": "warp.js",
-  "license": "MIT",
+  "license": "GPL v3.0",
   "ignore": [
     "**/.*",
     "node_modules",
