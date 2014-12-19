@@ -17,15 +17,16 @@
 
 		var ws = new ReconnectingWebSocket('ws://'+endpoint)
 		
-		ws.onopen = function(evt) {
+		ws.onopen = function(evt) {       	        
 	        if(self.debug) {
 	        	var obj = new Object()
 	        	obj.type = evt.type
 	        	obj.timestamp = evt.timeStamp
-	        	self.ready = true
 	        	console.log('[warp] open: '+JSON.stringify(obj))
-	        	self._sendBuffer()
 	        }
+
+	        self.ready = true
+	        self._sendBuffer()
 	    }
 
 	    ws.onclose = function(evt) {
@@ -54,6 +55,7 @@
 	    self._sendJSON = function(obj) {
 	    	if(self.debug)
 	    		console.log('[warp] send message: '+JSON.stringify(obj))
+
 	    	ws.send(JSON.stringify(obj))
 	    }
 
@@ -72,9 +74,10 @@
 			obj.timestamp = Date.now()
 			if(this.params)
 				obj.params = this.params
+			
 			obj.msg = msg
 
-			if(self.ready)
+			if(self.ready) 
 				self._sendJSON(obj)
 			else
 				self.buffer.push(obj)
@@ -83,7 +86,7 @@
 	    self._subscribe = function(channel) {
 	    	var obj = new Object()
 	    	obj.subscribe = channel
-	    	if(self.ready)
+	    	if(self.ready) 
 				self._sendJSON(obj)
 			else
 				self.buffer.push(obj)
