@@ -14,7 +14,7 @@
 		var self = this
 		
 		self.debug = options.debug ? options.debug : false
-		self.reconnectInterval = options.reconnectInterval ? options.reconnectInterval : 3000
+		self.reconnectInterval = options.reconnectInterval ? options.reconnectInterval : 1000
 
 		var endpoint = options.endpoint+'/socket'
 
@@ -29,12 +29,9 @@
 	        	console.info('[warp] open: '+JSON.stringify(obj))
 	        }
 
-	        console.log("open")
-	        console.log(self.channel)
 	        var channels = self.channel.channel
 	        if(channels && Object.keys(channels).length > 0) {
 	        	Object.keys(channels).forEach(function(channel) {
-	        		console.log("subscribe "+channel)
 	        		self._subscribe(channel)
 	        	})
 	        }
@@ -73,12 +70,7 @@
 	    	if(self.debug)
 	    		console.debug('[warp] send message: '+JSON.stringify(obj))
 
-	    	try {
-	    		ws.send(JSON.stringify(obj))
-	    	} catch(e) {
-	    		console.log("catch")
-	    		console.log(e)
-	    	}
+	    	ws.send(JSON.stringify(obj))
 	    }
 
 	    self._sendBuffer = function () {
@@ -108,10 +100,7 @@
 	    self._subscribe = function(channel) {
 	    	var obj = new Object()
 	    	obj.subscribe = channel
-	    	if(self.ready) 
-				self._sendJSON(obj)
-			else
-				self.buffer.push(obj)
+			self._sendJSON(obj)
 	    }
 
 	    self._close = function() {
@@ -122,7 +111,10 @@
 
 	Warp.prototype.subscribe = function(channel, callback) {
 		this.channel.add(channel, callback)
-		this._subscribe(channel)
+		// this._subscribe(channel)
+		// var obj = new Object()
+	    // obj.subscribe = channel
+	    // this.buffer.push(obj)
 	}
 
 	Warp.prototype.unsubscribe = function(channel) {
