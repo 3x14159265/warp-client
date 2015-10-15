@@ -1,10 +1,10 @@
-;(function() { 
+;(function() {
 
 	function Warp(options) {
 		options = options || {}
-		
+
 		if(!options.endpoint)
-		  throw "[warp] [ERROR] no endpoint defined!"
+			throw "[warp] [ERROR] no endpoint defined!"
 
 		this.channel = new Warp.Channel(options)
 		this.params = options.params
@@ -12,109 +12,119 @@
 		this.buffer = []
 
 		var self = this
-		
+
 		self.debug = options.debug ? options.debug : false
 		self.reconnectInterval = options.reconnectInterval ? options.reconnectInterval : 1000
+		self.ssl = options.ssl ? options.ssl : false
 
 		var endpoint = options.endpoint+'/socket'
 
-		var ws = new ReconnectingWebSocket('ws://'+endpoint, null, 
+		var prot = options.ssl ? 'wss' : 'ws'
+		self.ws = new ReconnectingWebSocket(prot+'://'+endpoint, null,
 			{debug: self.debug, reconnectInterval: self.reconnectInterval})
-		
-		ws.onopen = function(evt) {       	        
-	        if(self.debug) {
-	        	var obj = new Object()
-	        	obj.type = evt.type
-	        	obj.timestamp = evt.timeStamp
-	        	console.info('[warp] open: '+JSON.stringify(obj))
-	        }
 
-	        var channels = self.channel.channel
-	        if(channels && Object.keys(channels).length > 0) {
-	        	Object.keys(channels).forEach(function(channel) {
-	        		self._subscribe(channel)
-	        	})
-	        }
+		self.ws.onopen = function(evt) {
+			if(self.debug) {
+				var obj = new Object()
+				obj.type = evt.type
+				obj.timestamp = evt.timeStamp
+				console.info('[warp] open: '+JSON.stringify(obj))
+			}
 
-	        self.ready = true
-	        self._sendBuffer()
-	    }
+			var channels = self.channel.all
+			if(channels.length > 0) {
+				channels.forEach(function(channel) {
+					var data = self.channel.data[channel]
+					self._subscribe(channel, data)
+				})
+			}
 
-	    ws.onclose = function(evt) {
-	    	if(self.debug) {
-	        	var obj = new Object()
-	        	obj.type = evt.type
-	        	obj.timestamp = evt.timeStamp
-	        	console.info('[warp]: '+JSON.stringify(obj))
-	        }
-	        self.ready = false
-	    }
+			self.ready = true
+			self._sendBuffer()
+		}
 
-	    ws.onmessage = function(evt) {
-	    	var response = JSON.parse(evt.data)
-	    	if(self.debug)
-	    		console.debug('[warp] receive message: '+JSON.stringify(response))
+		self.ws.onclose = function(evt) {
+			if(self.debug) {
+				var obj = new Object()
+				obj.type = evt.type
+				obj.timestamp = evt.timeStamp
+				console.info('[warp]: '+JSON.stringify(obj))
+			}
+			self.ready = false
+		}
 
-	    	if(response.channel && self.channel.get(response.channel))
-	        	self.channel.get(response.channel)(response.msg)
-	    }
+		self.ws.onmessage = function(evt) {
+			var response = JSON.parse(evt.data)
+			if(self.debug)
+				console.debug('[warp] receive message: '+JSON.stringify(response))
 
-	    ws.onerror = function(evt) {
-	        if(self.debug) {
-	        	console.error('[warp] ERROR')
-	        	console.error(evt)
-	        }
-	    }
+			if(response.channel && self.channel.get(response.channel))
+				self.channel.get(response.channel)(response)
+		}
 
-	    self._sendJSON = function(obj) {
-	    	if(self.debug)
-	    		console.debug('[warp] send message: '+JSON.stringify(obj))
+		self.ws.onerror = function(evt) {
+			if(self.debug) {
+				console.error('[warp] ERROR')
+				console.error(evt)
+			}
+		}
 
-	    	ws.send(JSON.stringify(obj))
-	    }
+		self._sendJSON = function(obj) {
+			if(self.debug)
+				console.debug('[warp] send message: '+JSON.stringify(obj))
 
-	    self._sendBuffer = function () {
-	    	self.buffer.forEach(function(bufferObj, index) {
-	        		setTimeout(function() {
-	        			self._sendJSON(bufferObj)
-	        		}, 100)
-	        	})
-	    	self.buffer = []
-	    }
+			self.ws.send(JSON.stringify(obj))
+		}
 
-	    self._send = function(channel, msg) {
-	    	var obj = new Object()
+		self._sendBuffer = function () {
+			self.buffer.forEach(function(bufferObj, index) {
+				setTimeout(function() {
+					self._sendJSON(bufferObj)
+				}, 100)
+			})
+			self.buffer = []
+		}
+
+		self._send = function(channel, msg) {
+			var obj = new Object()
 			obj.channel = channel
 			obj.timestamp = Date.now()
 			if(this.params)
 				obj.params = this.params
-			
+
 			obj.msg = msg
 
-			if(self.ready) 
+			if(self.ready)
 				self._sendJSON(obj)
 			else
 				self.buffer.push(obj)
-	    }
+		}
 
-	    self._subscribe = function(channel) {
-	    	var obj = new Object()
-	    	obj.subscribe = channel
+		self._subscribe = function(channel, data) {
+			var obj = new Object()
+			obj.subscribe = channel
+			if(data)
+				obj.data = data
 			self._sendJSON(obj)
-	    }
+		}
 
-	    self._close = function() {
-	    	ws.close(1000)
-	    }
-		
+		self._close = function() {
+			self.ws.close(1000)
+		}
+
 	}
 
-	Warp.prototype.subscribe = function(channel, callback) {
-		this.channel.add(channel, callback)
-		// this._subscribe(channel)
-		// var obj = new Object()
-	    // obj.subscribe = channel
-	    // this.buffer.push(obj)
+	Warp.prototype.subscribe = function(channel, callback, data) {
+		this.channel.add(channel, callback, data)
+		if(this.ws.readyState) {
+			this._subscribe(channel, data)
+		} else {
+			var obj = new Object()
+			obj.subscribe = channel
+			if(data)
+				obj.data = data
+			this.buffer.push(obj)
+		}
 	}
 
 	Warp.prototype.unsubscribe = function(channel) {
@@ -142,10 +152,12 @@
 		options = options || {}
 		this.debug = options.debug ? options.debug : false
 		this.channel = new Object()
+		this.data = new Object()
 	}
 
-	Channel.prototype.add = function(channel, callback) {
+	Channel.prototype.add = function(channel, callback, data) {
 		this.channel[channel] = callback
+		this.data[channel] = data
 		if(this.debug)
 			console.info('[warp]: subscribed to channel '+channel)
 	}
@@ -156,6 +168,7 @@
 
 	Channel.prototype.remove = function(channel) {
 		delete this.channel[channel]
+		delete this.data[channel]
 	}
 
 	Channel.prototype.all = function() {
