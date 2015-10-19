@@ -31,7 +31,9 @@
 				console.info('[warp] open: '+JSON.stringify(obj))
 			}
 
-			var channels = self.channel.all
+			var channels = self.channel.all()
+			if(self.debug) 
+				console.log('[warp] reconnect to channels: '+JSON.stringify(channels))
 			if(channels.length > 0) {
 				channels.forEach(function(channel) {
 					var data = self.channel.data[channel]
@@ -60,6 +62,10 @@
 
 			if(response.channel && self.channel.get(response.channel))
 				self.channel.get(response.channel)(response)
+			else if(response.sub && self.channel.get(response.sub.channel))
+				self.channel.get(response.sub.channel)(response)
+			else if(response.unsub && self.channel.get(response.unsub.channel))
+				self.channel.get(response.unsub.channel)(response)	
 		}
 
 		self.ws.onerror = function(evt) {
