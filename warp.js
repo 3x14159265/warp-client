@@ -21,7 +21,7 @@
 
 		var prot = options.ssl ? 'wss' : 'ws'
 		self.ws = new ReconnectingWebSocket(prot+'://'+endpoint, null,
-			{debug: self.debug, reconnectInterval: self.reconnectInterval})
+			{debug: false, reconnectInterval: self.reconnectInterval})
 
 		self.ws.onopen = function(evt) {
 			if(self.debug) {
@@ -30,6 +30,8 @@
 				obj.timestamp = evt.timeStamp
 				console.info('[warp] open: '+JSON.stringify(obj))
 			}
+
+			console.log(self.buffer)
 
 			var channels = self.channel.all()
 			if(self.debug) 
@@ -122,15 +124,8 @@
 
 	Warp.prototype.subscribe = function(channel, callback, data) {
 		this.channel.add(channel, callback, data)
-		if(this.ws.readyState) {
+		if(this.ws.readyState)
 			this._subscribe(channel, data)
-		} else {
-			var obj = new Object()
-			obj.subscribe = channel
-			if(data)
-				obj.data = data
-			this.buffer.push(obj)
-		}
 	}
 
 	Warp.prototype.unsubscribe = function(channel) {
