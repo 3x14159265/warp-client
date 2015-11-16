@@ -29,9 +29,8 @@
 				obj.type = evt.type
 				obj.timestamp = evt.timeStamp
 				console.info('[warp] open: '+JSON.stringify(obj))
+				console.log('[warp] buffer: '+JSON.stringify(self.buffer))
 			}
-
-			console.log(self.buffer)
 
 			var channels = self.channel.all()
 			if(self.debug) 
@@ -45,6 +44,8 @@
 
 			self.ready = true
 			self._sendBuffer()
+			var event = new Event('warp-open', evt)
+			document.dispatchEvent(event)
 		}
 
 		self.ws.onclose = function(evt) {
@@ -55,6 +56,8 @@
 				console.info('[warp]: '+JSON.stringify(obj))
 			}
 			self.ready = false
+			var event = new Event('warp-closed', evt)
+			document.dispatchEvent(event)
 		}
 
 		self.ws.onmessage = function(evt) {
@@ -75,6 +78,8 @@
 				console.error('[warp] ERROR')
 				console.error(evt)
 			}
+			var event = new Event('warp-error', evt)
+			document.dispatchEvent(event)
 		}
 
 		self._sendJSON = function(obj) {
