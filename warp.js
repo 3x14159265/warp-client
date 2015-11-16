@@ -144,6 +144,10 @@
 		this._close()
 	}
 
+	Warp.prototype.status = function() {
+		return this.ws.readyState
+	}
+
 	this.Warp = Warp
 }).call(this);
 
